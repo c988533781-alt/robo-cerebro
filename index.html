@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <!-- Ocupa a tela inteira do celular, sem zoom -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Robô — Cérebro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Aqui os olhos são desenhados -->
+  <canvas id="rosto"></canvas>
+
+  <!-- Nome da emoção (aparece por um instante quando muda) -->
+  <div id="legenda"></div>
+
+  <!-- Dica que some depois do primeiro toque -->
+  <div id="dica">Toque na tela para começar<br><small>Cada toque muda a emoção</small></div>
+
+  <!-- Ordem importa: primeiro os olhos, depois o programa principal -->
+  <script src="js/olhos.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
