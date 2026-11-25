@@ -7,46 +7,208 @@ html, body {
   background: #000;
   overflow: hidden;
   touch-action: manipulation;      /* evita zoom com toque duplo */
-  user-select: none;
-  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
   font-family: system-ui, sans-serif;
+  color: #fff;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* ---------- Área do rosto ---------- */
+#area {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #rosto {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
 #legenda {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
-  bottom: 6vh;
+  top: 3vh;
   text-align: center;
   color: #5ff3ff;
-  font-size: 5vmin;
+  font-size: 4vmin;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   opacity: 0;
   transition: opacity 0.4s;
   pointer-events: none;
 }
-#legenda.visivel { opacity: 0.8; }
+#legenda.visivel { opacity: 0.7; }
+
+#fala {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 3vh;
+  text-align: center;
+  color: #e8fdff;
+  font-size: clamp(16px, 4.2vmin, 28px);
+  line-height: 1.35;
+  text-shadow: 0 0 8px #000, 0 0 2px #000;
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+  max-height: 35%;
+  overflow: hidden;
+}
+#fala.visivel { opacity: 1; }
+#fala.erro { color: #ffb3b3; }
 
 #dica {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
-  bottom: 6vh;
+  top: 8vh;
   text-align: center;
   color: #ffffff99;
   font-size: 4vmin;
   pointer-events: none;
   transition: opacity 0.6s;
 }
-#dica small { font-size: 3vmin; opacity: 0.7; }
 #dica.oculta { opacity: 0; }
+
+#engrenagem {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff14;
+  color: #ffffff88;
+  font-size: 24px;
+  line-height: 44px;
+  padding: 0;
+}
+
+/* ---------- Barra de mensagem ---------- */
+#barra {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: #0b1418;
+  border-top: 1px solid #5ff3ff33;
+}
+
+#mensagem {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;           /* 16px evita o zoom automático do celular */
+  padding: 10px 12px;
+  border-radius: 20px;
+  border: 1px solid #5ff3ff55;
+  background: #000;
+  color: #fff;
+  outline: none;
+}
+#mensagem:focus { border-color: #5ff3ff; }
+
+#enviar {
+  font-size: 16px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 20px;
+  background: #5ff3ff;
+  color: #002a30;
+  font-weight: 600;
+}
+#enviar:disabled { opacity: 0.4; }
+
+/* ---------- Painel de configurações ---------- */
+#painel {
+  position: fixed;
+  inset: 0;
+  background: #000000cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+#painel[hidden] { display: none; }
+
+#painel .caixa {
+  width: min(92vw, 420px);
+  max-height: 90dvh;
+  overflow-y: auto;
+  background: #0b1418;
+  border: 1px solid #5ff3ff55;
+  border-radius: 16px;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+#painel h2 {
+  margin: 0 0 12px;
+  color: #5ff3ff;
+  font-size: 20px;
+}
+
+#painel label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 14px;
+  color: #cfeff3;
+}
+
+#painel input,
+#painel select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  font-size: 16px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #5ff3ff55;
+  background: #000;
+  color: #fff;
+}
+
+#painel .aviso {
+  font-size: 13px;
+  color: #9fc5ca;
+  margin: 6px 0;
+}
+
+#painel .botoes {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+#painel .botoes button {
+  flex: 1;
+  font-size: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #5ff3ff55;
+  background: transparent;
+  color: #e8fdff;
+}
+#painel .botoes .principal {
+  background: #5ff3ff;
+  color: #002a30;
+  font-weight: 600;
+  border: none;
+}
+#painel .botoes .perigo {
+  border-color: #ff8080aa;
+  color: #ffb3b3;
+}

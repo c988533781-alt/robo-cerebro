@@ -3,24 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <!-- Ocupa a tela inteira do celular, sem zoom -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Robô — Cérebro</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- Aqui os olhos são desenhados -->
-  <canvas id="rosto"></canvas>
+  <!-- Área do rosto -->
+  <main id="area">
+    <canvas id="rosto"></canvas>
 
-  <!-- Nome da emoção (aparece por um instante quando muda) -->
-  <div id="legenda"></div>
+    <!-- Nome da emoção (aparece por um instante quando muda) -->
+    <div id="legenda"></div>
 
-  <!-- Dica que some depois do primeiro toque -->
-  <div id="dica">Toque na tela para começar<br><small>Cada toque muda a emoção</small></div>
+    <!-- O que o robô respondeu -->
+    <div id="fala"></div>
 
-  <!-- Ordem importa: primeiro os olhos, depois o programa principal -->
+    <!-- Dica que some depois do primeiro toque -->
+    <div id="dica">Toque na tela para começar</div>
+
+    <!-- Botão de configurações -->
+    <button id="engrenagem" type="button" aria-label="Configurações">⚙</button>
+  </main>
+
+  <!-- Barra para digitar -->
+  <form id="barra" autocomplete="off">
+    <input id="mensagem" type="text" placeholder="Fale com o robô..." enterkeyhint="send" maxlength="500">
+    <button id="enviar" type="submit">Enviar</button>
+  </form>
+
+  <!-- Painel de configurações -->
+  <div id="painel" hidden>
+    <div class="caixa">
+      <h2>Configurações</h2>
+
+      <label>Nome do robô
+        <input id="cfgNome" type="text" maxlength="30">
+      </label>
+
+      <label>Quem pensa pelo robô
+        <select id="cfgProvedor"></select>
+      </label>
+
+      <label>Chave da IA
+        <input id="cfgChave" type="password" autocomplete="off" spellcheck="false">
+      </label>
+      <p id="cfgDicaChave" class="aviso"></p>
+      <p class="aviso">🔒 A chave fica guardada só neste aparelho. Não vai para o GitHub.</p>
+
+      <label>Modelo
+        <select id="cfgModelo"></select>
+      </label>
+
+      <div class="botoes">
+        <button id="cfgSalvar" type="button" class="principal">Salvar</button>
+        <button id="cfgFechar" type="button">Fechar</button>
+      </div>
+      <div class="botoes">
+        <button id="cfgNovaConversa" type="button">Conversa nova</button>
+        <button id="cfgApagarChave" type="button" class="perigo">Apagar chave</button>
+      </div>
+      <p id="cfgStatus" class="aviso"></p>
+    </div>
+  </div>
+
+  <!-- Ordem importa: olhos → configurações → cérebro → programa principal -->
   <script src="js/olhos.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/cerebro.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

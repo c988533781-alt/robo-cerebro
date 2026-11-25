@@ -1,8 +1,8 @@
 # 🤖 Robô com IA — Cérebro
 
-Cérebro do robô rodando no celular (Moto g05), com o Claude pela nuvem e um ESP32 como corpo.
+Cérebro do robô rodando no celular (moto g05), com a IA pela nuvem (Groq grátis ou Claude) e um ESP32 como corpo.
 
-**Etapa atual: 1 — Olhos animados ✅**
+**Etapa atual: 2 — Conversa com a IA (Groq grátis ou Claude) ✅**
 
 ## Arquivos
 
@@ -11,7 +11,9 @@ robo-cerebro/
 ├── index.html      → a página que abre no celular
 ├── css/style.css   → visual (fundo preto, tela cheia)
 ├── js/olhos.js     → desenho e animação dos olhos + lista de emoções
-├── js/main.js      → programa principal (toques, tela cheia, comandos do robô)
+├── js/config.js    → guarda nome, chaves e modelos SÓ no aparelho
+├── js/cerebro.js   → conversa com a IA (Groq ou Claude)
+├── js/main.js      → programa principal (conversa, toques, tela cheia, configurações)
 └── README.md       → este arquivo
 ```
 
@@ -19,8 +21,28 @@ robo-cerebro/
 
 - Dois olhos que **piscam sozinhos**, **olham em volta** e "respiram" (pulsam de leve)
 - 9 emoções: neutro, feliz, triste, bravo, surpreso, sono, desconfiado, pensando, ouvindo
-- **Primeiro toque**: entra em tela cheia, deita a tela e impede que ela apague
-- **Cada toque depois**: muda a emoção
+- **Primeiro toque**: entra em tela cheia e impede que a tela apague
+- **Toque nos olhos**: "carinho", ele fica feliz por um instante
+- **Conversa**: digite na barra de baixo; a IA responde e os olhos mostram a emoção da resposta
+- Enquanto você digita ele fica **ouvindo**; enquanto espera a resposta fica **pensando**
+- **Engrenagem ⚙**: nome do robô, quem pensa (Groq ou Claude), chave, modelo, conversa nova, apagar chave
+
+## Chave da IA
+
+**Groq — grátis (padrão)**
+1. Crie uma conta em **console.groq.com** (não pede cartão).
+2. Em **API Keys → Create API Key**, copie a chave (começa com `gsk_`).
+3. No robô: **engrenagem ⚙ → Quem pensa: Groq** → cole a chave. A lista de modelos aparece sozinha. Toque em **Salvar**.
+- Tem limite diário grátis. Se passar, o robô avisa e é só esperar; não há cobrança.
+
+**Claude — pago (opcional)**
+1. Conta em **console.anthropic.com** (separada da assinatura do app do Claude).
+2. Em **Billing**, coloque um crédito pequeno (ex.: US$ 5). Em **Limits**, defina um limite mensal.
+3. Em **API Keys → Create Key**, copie a chave (começa com `sk-ant-`).
+4. No robô: **engrenagem ⚙ → Quem pensa: Claude** → cole a chave → **Salvar**. Haiku é o mais barato.
+
+> 🔒 As chaves ficam só no navegador do aparelho. Elas não estão em nenhum arquivo, por isso nunca vão para o GitHub.
+> Se achar que alguém viu uma chave, apague ela no site do Groq/Anthropic e crie outra.
 
 ## Testar no PC (VS Code)
 
@@ -44,7 +66,14 @@ robo-cerebro/
 6. Abra esse endereço no **Chrome do Moto g05**.
 7. Dica: menu ⋮ → **Adicionar à tela inicial**. Vira um ícone, como se fosse um app.
 
-> ⚠️ **Nunca** coloque a chave da API do Claude nos arquivos do GitHub. Na etapa 2 a chave vai ser digitada no próprio celular e guardada só nele.
+> ⚠️ **Nunca** coloque uma chave de IA nos arquivos do GitHub. A chave é digitada na engrenagem do robô e fica guardada só no aparelho.
+
+## Atualizar o site depois de mudar o código
+
+1. No GitHub, abra o repositório `robo-cerebro` → **Add file → Upload files**.
+2. Arraste de novo **css**, **js**, **index.html** e **README.md** (os arquivos com o mesmo nome são substituídos).
+3. **Commit changes**. Em 1 ou 2 minutos o site atualiza.
+4. No celular, recarregue a página. Se continuar a versão antiga, feche a aba e abra de novo.
 
 ## Comandos do robô (para as próximas etapas)
 
@@ -55,6 +84,7 @@ robo.emocao('feliz')   // muda a emoção
 robo.olhar(1, 0)       // olha para a direita (x e y de -1 a 1)
 robo.olharLivre()      // volta a olhar em volta sozinho
 robo.piscar()          // pisca
+robo.falar('Oi!')      // manda uma mensagem para a IA
 ```
 
 ## Criar uma emoção nova
@@ -65,7 +95,7 @@ Depois coloque o nome bonito em `NOMES_EMOCOES`.
 ## Próximas etapas
 
 - [x] 1. Olhos animados
-- [ ] 2. Conversa por texto com o Claude
+- [x] 2. Conversa por texto com a IA (Groq ou Claude)
 - [ ] 3. Voz: ouvir e falar
 - [ ] 4. Memória do robô
 - [ ] 5. ESP32 + Bluetooth (olhos reagem ao sensor)

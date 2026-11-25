@@ -73,6 +73,10 @@ class Olhos {
 
     this._redimensionar = this._redimensionar.bind(this);
     window.addEventListener('resize', this._redimensionar);
+    // Também redimensiona quando só a área do canvas muda (ex.: teclado do celular abrindo)
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(this._redimensionar).observe(canvas);
+    }
     this._redimensionar();
 
     this._ultimo = performance.now();
@@ -119,8 +123,10 @@ class Olhos {
   _redimensionar() {
     // Em telas de alta resolução, limita a 2x para não pesar no celular
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    // Usa o tamanho real do canvas na tela (não da janela inteira),
+    // porque agora existe a barra de mensagem embaixo
+    const w = this.canvas.clientWidth || window.innerWidth;
+    const h = this.canvas.clientHeight || window.innerHeight;
     for (const c of [this.canvas, this.buffer]) {
       c.width = Math.round(w * dpr);
       c.height = Math.round(h * dpr);
