@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 // Guarda os últimos erros do programa (aparecem no "Testar tudo")
 // ---------------------------------------------------------------------------
-const VERSAO = '3.2 (25/11)';
+const VERSAO = '3.3 (25/11)';
 const errosRecentes = [];
 function anotarErro(texto) {
   errosRecentes.push(new Date().toLocaleTimeString('pt-BR') + ' — ' + texto);
@@ -53,6 +53,8 @@ let config = carregarConfig();
 const cerebro = new Cerebro(() => config);
 const ouvido = new Ouvido();
 const voz = new Voz();
+const aplicarVoz = () => voz.configurar({ nome: config.vozNome, velocidade: config.vozVelocidade, tom: config.vozTom });
+aplicarVoz();
 const camera = new Camera(previa);
 
 const ordem = Object.keys(EMOCOES);
@@ -337,6 +339,49 @@ async function testarClaudeNoPainel() {
   }
 }
 
+// ---------------- Voz (painel) ----------------
+const cfgVoz = document.getElementById('cfgVoz');
+const cfgVelocidade = document.getElementById('cfgVelocidade');
+const cfgTom = document.getElementById('cfgTom');
+const cfgVelocidadeValor = document.getElementById('cfgVelocidadeValor');
+const cfgTomValor = document.getElementById('cfgTomValor');
+
+function preencherVozes(escolhida) {
+  const vozes = voz.listar();
+  cfgVoz.innerHTML = '';
+  const auto = document.createElement('option');
+  auto.value = '';
+  auto.textContent = vozes.length ? 'Automática (português)' : 'Padrão do celular (carregando vozes...)';
+  cfgVoz.appendChild(auto);
+  for (const v of vozes) {
+    const op = document.createElement('option');
+    op.value = v.name;
+    op.textContent = `${v.name} (${v.lang})${v.localService ? '' : ' — precisa de internet'}`;
+    cfgVoz.appendChild(op);
+  }
+  cfgVoz.value = vozes.some((v) => v.name === escolhida) ? escolhida : '';
+}
+function mostrarValoresVoz() {
+  cfgVelocidadeValor.textContent = Number(cfgVelocidade.value).toFixed(2) + 'x';
+  cfgTomValor.textContent = Number(cfgTom.value).toFixed(2);
+}
+cfgVelocidade.addEventListener('input', mostrarValoresVoz);
+cfgTom.addEventListener('input', mostrarValoresVoz);
+// O celular carrega as vozes um pouco depois: atualiza a lista se o painel estiver aberto
+voz.aoMudarVozes = () => { if (!painel.hidden) preencherVozes(cfgVoz.value || config.vozNome); };
+
+document.getElementById('cfgOuvirVoz').addEventListener('click', async () => {
+  voz.liberar();
+  const antes = { nome: voz.nomePreferido, velocidade: voz.velocidade, tom: voz.tom };
+  voz.configurar({ nome: cfgVoz.value, velocidade: Number(cfgVelocidade.value), tom: Number(cfgTom.value) });
+  const nome = cfgNome.value.trim() || config.nome;
+  await voz.falar(`Oi! Eu sou ${nome}. Gostou dessa voz?`, {
+    aoComecar: () => olhos.setFalando(true),
+    aoTerminar: () => olhos.setFalando(false),
+  });
+  voz.configurar(antes);   // só fica valendo depois de tocar em Salvar
+});
+
 let provedorMostrado = null;
 function mostrarProvedor() {
   const id = cfgProvedor.value;
@@ -367,6 +412,10 @@ function abrirPainel(aviso = '') {
   cfgNome.value = config.nome;
   cfgProvedor.value = config.provedor;
   cfgFalar.checked = config.falarRespostas;
+  preencherVozes(config.vozNome);
+  cfgVelocidade.value = config.vozVelocidade;
+  cfgTom.value = config.vozTom;
+  mostrarValoresVoz();
   cfgModoConversa.checked = config.modoConversa;
   cfgCamera.value = config.camera;
   mostrarProvedor();
@@ -413,6 +462,9 @@ document.getElementById('cfgSalvar').addEventListener('click', () => {
   rascunho.nome = cfgNome.value.trim() || CONFIG_PADRAO.nome;
   rascunho.provedor = id;
   rascunho.falarRespostas = cfgFalar.checked;
+  rascunho.vozNome = cfgVoz.value;
+  rascunho.vozVelocidade = Number(cfgVelocidade.value);
+  rascunho.vozTom = Number(cfgTom.value);
   rascunho.modoConversa = cfgModoConversa.checked;
   const trocouCamera = rascunho.camera !== cfgCamera.value;
   rascunho.camera = cfgCamera.value;
@@ -421,6 +473,7 @@ document.getElementById('cfgSalvar').addEventListener('click', () => {
   if (salvarConfig(config)) {
     if (trocouProvedor) cerebro.limpar();
     if (!config.falarRespostas) voz.calar();
+    aplicarVoz();
     if (trocouCamera && camera.ligada) ligarCamera().catch(() => {});
     fecharPainel();
     mudarEmocao('feliz', false);

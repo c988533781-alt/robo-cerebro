@@ -81,18 +81,44 @@ class Voz {
     this.suportado = 'speechSynthesis' in window;
     this.voz = null;
     this.falando = false;
+    this.nomePreferido = '';   // voz escolhida na engrenagem
+    this.velocidade = 1.05;
+    this.tom = 1.3;
+    this.aoMudarVozes = null;  // avisa o painel quando o celular termina de carregar as vozes
     this.ultimoErro = '';       // para o diagnóstico
     this.liberada = false;      // o Chrome do celular só deixa falar depois de um toque
     if (this.suportado) {
       this._escolherVoz();
       // No Android as vozes chegam um pouco depois
-      speechSynthesis.addEventListener?.('voiceschanged', () => this._escolherVoz());
+      speechSynthesis.addEventListener?.('voiceschanged', () => {
+        this._escolherVoz();
+        if (this.aoMudarVozes) this.aoMudarVozes();
+      });
     }
+  }
+
+  /** Vozes que dá para escolher: as em português (ou todas, se não tiver nenhuma) */
+  listar() {
+    if (!this.suportado) return [];
+    const vozes = speechSynthesis.getVoices();
+    const pt = vozes.filter((v) => /^pt/i.test(v.lang));
+    const lista = pt.length ? pt : vozes;
+    // Português do Brasil primeiro
+    return lista.slice().sort((a, b) => (/BR/i.test(b.lang) - /BR/i.test(a.lang)) || a.name.localeCompare(b.name));
+  }
+
+  /** Aplica o que foi escolhido na engrenagem */
+  configurar({ nome = '', velocidade = 1.05, tom = 1.3 } = {}) {
+    this.nomePreferido = nome;
+    this.velocidade = velocidade;
+    this.tom = tom;
+    this._escolherVoz();
   }
 
   _escolherVoz() {
     const vozes = speechSynthesis.getVoices();
     this.voz =
+      (this.nomePreferido && vozes.find((v) => v.name === this.nomePreferido)) ||
       vozes.find((v) => /pt[-_]BR/i.test(v.lang)) ||
       vozes.find((v) => /^pt/i.test(v.lang)) ||
       null;
@@ -134,8 +160,8 @@ class Voz {
       const u = new SpeechSynthesisUtterance(texto);
       u.lang = 'pt-BR';
       if (this.voz) u.voice = this.voz;
-      u.rate = 1.05;    // velocidade
-      u.pitch = 1.3;    // voz um pouco mais fina, jeitinho de robozinho
+      u.rate = this.velocidade;   // velocidade
+      u.pitch = this.tom;         // tom: mais alto = voz mais fininha, jeitinho de robozinho
 
       let acabou = false;
       const fim = () => {
