@@ -8,6 +8,18 @@
  */
 
 // ---------------------------------------------------------------------------
+// Guarda os últimos erros do programa (aparecem no "Testar tudo")
+// ---------------------------------------------------------------------------
+const VERSAO = '3.2 (25/11)';
+const errosRecentes = [];
+function anotarErro(texto) {
+  errosRecentes.push(new Date().toLocaleTimeString('pt-BR') + ' — ' + texto);
+  if (errosRecentes.length > 5) errosRecentes.shift();
+}
+window.addEventListener('error', (e) => anotarErro(`${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`));
+window.addEventListener('unhandledrejection', (e) => anotarErro(String(e.reason?.message || e.reason)));
+
+// ---------------------------------------------------------------------------
 // Peças da tela
 // ---------------------------------------------------------------------------
 const canvas = document.getElementById('rosto');
@@ -135,6 +147,7 @@ async function enviarMensagem(texto, { veioDaVoz = false } = {}) {
     mostrarFala(resposta);
   } catch (erro) {
     console.warn(erro);
+    anotarErro('Conversa: ' + (erro.message || erro) + (erro.detalhe ? ` (${erro.detalhe})` : ''));
     mudarEmocao('triste', false);
     mostrarFala(erro.message || 'Deu algum problema.', true);
     voltarAoNeutroDepois(5);
@@ -427,6 +440,75 @@ document.getElementById('cfgApagarChave').addEventListener('click', () => {
   cfgStatus.textContent = 'Chave apagada deste aparelho.';
 });
 
+// ---------------------------------------------------------------------------
+// 🔧 Testar tudo: descobre o que não está funcionando
+// ---------------------------------------------------------------------------
+const cfgRelatorio = document.getElementById('cfgRelatorio');
+
+document.getElementById('cfgTestar').addEventListener('click', async (ev) => {
+  const botao = ev.currentTarget;
+  voz.liberar();
+  botao.disabled = true;
+  cfgRelatorio.hidden = false;
+  const linhas = [];
+  const escrever = (t) => { linhas.push(t); cfgRelatorio.textContent = linhas.join('\n'); };
+
+  escrever(`Versão do robô: ${VERSAO}`);
+  escrever(`Internet: ${navigator.onLine ? 'ligada ✔' : 'DESLIGADA ✖'}`);
+
+  // 1) A IA
+  const id = cfgProvedor.value;
+  const chave = limparChave(cfgChave.value);
+  const modelo = cfgModelo.value;
+  escrever(`\nIA escolhida: ${PROVEDORES[id].nome}`);
+  escrever(`Modelo: ${modelo || '(nenhum)'}`);
+  if (!chave) {
+    escrever('Chave: FALTANDO ✖ (cole a chave e toque em Salvar)');
+  } else {
+    escrever(`Chave: começa com ${chave.slice(0, 7)}… e tem ${chave.length} letras`);
+    if (!chave.startsWith(PROVEDORES[id].prefixo)) {
+      escrever(`✖ Deveria começar com "${PROVEDORES[id].prefixo}"`);
+    }
+    escrever('Perguntando "oi" para a IA...');
+    try {
+      const inicio = performance.now();
+      const teste = new Cerebro(() => ({
+        ...config,
+        provedor: id,
+        chaves: { ...config.chaves, [id]: chave },
+        modelos: { ...config.modelos, [id]: modelo || config.modelos[id] },
+      }));
+      const r = await teste.conversar('Diga só: oi, estou funcionando.');
+      const seg = ((performance.now() - inicio) / 1000).toFixed(1);
+      escrever(`IA respondeu em ${seg}s ✔: "${r.texto}"`);
+    } catch (e) {
+      escrever(`IA: ✖ ${e.message || e}${e.detalhe ? `\n   (${e.detalhe})` : ''}`);
+    }
+  }
+
+  // 2) A voz
+  escrever(`\nVoz: ${voz.info()}`);
+  escrever(`Falar as respostas: ${cfgFalar.checked ? 'ligado ✔' : 'DESLIGADO (marque a caixinha)'}`);
+  if (voz.suportado) {
+    escrever('Falando "teste de voz"... (aumente o volume de MÍDIA)');
+    let comecou = false;
+    await voz.falar('Teste de voz. Se você está me ouvindo, a voz funciona.', {
+      aoComecar: () => { comecou = true; },
+    });
+    if (comecou) escrever('Voz: o celular começou a falar ✔');
+    else escrever(`Voz: ✖ não saiu som${voz.ultimoErro ? ` (erro: ${voz.ultimoErro})` : ''}`);
+  }
+
+  // 3) Ouvido
+  escrever(`\nMicrofone (reconhecimento de voz): ${ouvido.suportado ? 'disponível ✔' : 'NÃO disponível neste navegador ✖'}`);
+
+  // 4) Erros que aconteceram antes
+  escrever('\nÚltimos erros:');
+  escrever(errosRecentes.length ? errosRecentes.map((e) => '• ' + e).join('\n') : '• nenhum');
+  escrever('\nTire um print desta tela e mande para o Claude.');
+  botao.disabled = false;
+});
+
 document.getElementById('cfgNovaConversa').addEventListener('click', () => {
   cerebro.limpar();
   cfgStatus.textContent = 'Conversa apagada. O robô começou do zero.';
@@ -466,6 +548,7 @@ async function entrarTelaCheia() {
 // Primeiro toque em qualquer lugar: tela cheia e tela sempre ligada
 let primeiroToque = true;
 document.addEventListener('pointerdown', async () => {
+  voz.liberar();   // destrava a voz do Chrome (precisa ser dentro de um toque)
   if (!primeiroToque) return;
   primeiroToque = false;
   dica.classList.add('oculta');

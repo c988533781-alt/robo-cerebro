@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Robô — Cérebro</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=32">
 </head>
 <body>
   <!-- Área do rosto -->
@@ -80,15 +80,21 @@
         <button id="cfgApagarChave" type="button" class="perigo">Apagar chave</button>
       </div>
       <p id="cfgStatus" class="aviso"></p>
+
+      <div class="botoes">
+        <button id="cfgTestar" type="button" class="principal">🔧 Testar tudo</button>
+      </div>
+      <pre id="cfgRelatorio" hidden></pre>
+      <p class="aviso versao">Versão 3.2 (25/11)</p>
     </div>
   </div>
 
   <!-- Ordem importa: olhos → configurações → cérebro → programa principal -->
-  <script src="js/olhos.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/cerebro.js"></script>
-  <script src="js/voz.js"></script>
-  <script src="js/camera.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/olhos.js?v=32"></script>
+  <script src="js/config.js?v=32"></script>
+  <script src="js/cerebro.js?v=32"></script>
+  <script src="js/voz.js?v=32"></script>
+  <script src="js/camera.js?v=32"></script>
+  <script src="js/main.js?v=32"></script>
 </body>
 </html>

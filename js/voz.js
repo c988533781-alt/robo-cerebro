@@ -81,6 +81,8 @@ class Voz {
     this.suportado = 'speechSynthesis' in window;
     this.voz = null;
     this.falando = false;
+    this.ultimoErro = '';       // para o diagnóstico
+    this.liberada = false;      // o Chrome do celular só deixa falar depois de um toque
     if (this.suportado) {
       this._escolherVoz();
       // No Android as vozes chegam um pouco depois
@@ -96,11 +98,38 @@ class Voz {
       null;
   }
 
+  /**
+   * "Destrava" a voz. Tem que ser chamado DENTRO de um toque na tela,
+   * senão o Chrome do Android fica mudo.
+   */
+  liberar() {
+    if (!this.suportado || this.liberada) return;
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      speechSynthesis.speak(u);
+      this.liberada = true;
+    } catch (_) { /* tenta de novo no próximo toque */ }
+  }
+
+  /** Quantas vozes o aparelho tem, e qual vai ser usada (para o diagnóstico) */
+  info() {
+    if (!this.suportado) return 'não suportada neste navegador';
+    const vozes = speechSynthesis.getVoices();
+    this._escolherVoz();
+    const pt = vozes.filter((v) => /^pt/i.test(v.lang)).length;
+    return `${vozes.length} vozes no aparelho, ${pt} em português` +
+      (this.voz ? ` (usando: ${this.voz.name})` : ' (usando a voz padrão)');
+  }
+
   /** Fala o texto. Devolve uma promessa que termina quando acabar de falar. */
   falar(texto, { aoComecar, aoTerminar } = {}) {
     return new Promise((resolve) => {
       if (!this.suportado || !texto) { resolve(); return; }
-      speechSynthesis.cancel();
+      // Se estava falando algo, para. (Chamar cancel() à toa trava a voz em alguns Androids.)
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      // No Android a voz às vezes fica "pausada" sozinha
+      if (speechSynthesis.paused) speechSynthesis.resume();
 
       const u = new SpeechSynthesisUtterance(texto);
       u.lang = 'pt-BR';
@@ -117,13 +146,18 @@ class Voz {
         if (aoTerminar) aoTerminar();
         resolve();
       };
-      u.onstart = () => { this.falando = true; if (aoComecar) aoComecar(); };
+      u.onstart = () => { this.falando = true; this.ultimoErro = ''; if (aoComecar) aoComecar(); };
       u.onend = fim;
-      u.onerror = fim;
+      u.onerror = (e) => {
+        this.ultimoErro = e.error || 'erro desconhecido';
+        console.warn('Erro na voz:', this.ultimoErro);
+        fim();
+      };
       // Às vezes o celular não avisa que terminou; isto garante que não trava
       const seguranca = setTimeout(fim, 4000 + texto.length * 120);
 
-      speechSynthesis.speak(u);
+      // Pequena espera depois do cancel(), senão o Android às vezes engole a fala
+      setTimeout(() => speechSynthesis.speak(u), 80);
     });
   }
 
