@@ -107,7 +107,7 @@ async function enviarMensagem(texto, { veioDaVoz = false } = {}) {
 
   if (!config.chaves[config.provedor]) {
     mostrarFala('Primeiro coloque a chave da IA na engrenagem ⚙', true);
-    abrirPainel();
+    abrirPainel('Falta a chave de quem pensa pelo robô. Cole a chave e toque em Salvar.');
     return;
   }
 
@@ -138,7 +138,9 @@ async function enviarMensagem(texto, { veioDaVoz = false } = {}) {
     mudarEmocao('triste', false);
     mostrarFala(erro.message || 'Deu algum problema.', true);
     voltarAoNeutroDepois(5);
-    if (['sem-chave', 'chave-invalida', 'modelo'].includes(erro.codigo)) abrirPainel();
+    if (['sem-chave', 'chave-invalida', 'modelo'].includes(erro.codigo)) {
+      abrirPainel((erro.message || 'Deu algum problema.') + (erro.detalhe ? ` (${erro.detalhe})` : ''));
+    }
   } finally {
     ocupado = false;
     atualizarBotoes();
@@ -296,6 +298,32 @@ async function atualizarModelosGroq() {
   }
 }
 
+/** Tira espaços e quebras de linha que às vezes vêm junto ao copiar a chave */
+function limparChave(texto) {
+  return (texto || '').replace(/\s+/g, '');
+}
+
+/** Testa a chave do Claude de verdade e mostra o resultado no painel */
+let pedidoTesteClaude = 0;
+async function testarClaudeNoPainel() {
+  const chave = limparChave(cfgChave.value);
+  if (!chave) return;
+  if (!chave.startsWith('sk-ant-')) {
+    cfgStatus.textContent = '⚠ A chave do Claude deveria começar com "sk-ant-".';
+    return;
+  }
+  const meu = ++pedidoTesteClaude;
+  cfgStatus.textContent = 'Testando a chave do Claude...';
+  try {
+    await testarChaveClaude(chave, cfgModelo.value);
+    if (meu !== pedidoTesteClaude) return;
+    cfgStatus.textContent = 'Chave ok ✔ (o Claude respondeu)';
+  } catch (e) {
+    if (meu !== pedidoTesteClaude) return;
+    cfgStatus.textContent = '⚠ ' + (e.message || 'A chave não funcionou.') + (e.detalhe ? ` (${e.detalhe})` : '');
+  }
+}
+
 let provedorMostrado = null;
 function mostrarProvedor() {
   const id = cfgProvedor.value;
@@ -309,16 +337,19 @@ function mostrarProvedor() {
     atualizarModelosGroq();
   } else {
     preencherModelos(MODELOS_CLAUDE, rascunho.modelos.claude);
+    testarClaudeNoPainel();
   }
 }
 
 function guardarCamposNoRascunho() {
   const id = cfgProvedor.value;
-  rascunho.chaves[id] = cfgChave.value.trim();
+  rascunho.chaves[id] = limparChave(cfgChave.value);
   if (cfgModelo.value) rascunho.modelos[id] = cfgModelo.value;
 }
 
-function abrirPainel() {
+/** aviso = motivo de ter aberto o painel sozinho (por exemplo, a chave deu erro) */
+function abrirPainel(aviso = '') {
+  if (typeof aviso !== 'string') aviso = '';   // quando vem do clique na engrenagem
   rascunho = structuredClone(config);
   cfgNome.value = config.nome;
   cfgProvedor.value = config.provedor;
@@ -326,6 +357,10 @@ function abrirPainel() {
   cfgModoConversa.checked = config.modoConversa;
   cfgCamera.value = config.camera;
   mostrarProvedor();
+  if (aviso) {
+    pedidoTesteClaude++;   // não deixa o teste automático apagar o aviso
+    cfgStatus.textContent = '⚠ ' + aviso;
+  }
   painel.hidden = false;
 }
 
@@ -336,7 +371,7 @@ function fecharPainel() {
 
 cfgProvedor.addEventListener('change', () => {
   // guarda o que estava digitado no provedor anterior antes de trocar
-  rascunho.chaves[provedorMostrado] = cfgChave.value.trim();
+  rascunho.chaves[provedorMostrado] = limparChave(cfgChave.value);
   if (cfgModelo.value) rascunho.modelos[provedorMostrado] = cfgModelo.value;
   mostrarProvedor();
 });
@@ -344,6 +379,10 @@ cfgProvedor.addEventListener('change', () => {
 // Quando colar a chave do Groq, já busca os modelos
 cfgChave.addEventListener('change', () => {
   if (cfgProvedor.value === 'groq') atualizarModelosGroq();
+  else testarClaudeNoPainel();
+});
+cfgModelo.addEventListener('change', () => {
+  if (cfgProvedor.value === 'claude') testarClaudeNoPainel();
 });
 
 document.getElementById('engrenagem').addEventListener('click', abrirPainel);
@@ -351,7 +390,7 @@ document.getElementById('cfgFechar').addEventListener('click', fecharPainel);
 
 document.getElementById('cfgSalvar').addEventListener('click', () => {
   const id = cfgProvedor.value;
-  const chave = cfgChave.value.trim();
+  const chave = limparChave(cfgChave.value);
   const prefixo = PROVEDORES[id].prefixo;
   if (chave && !chave.startsWith(prefixo)) {
     cfgStatus.textContent = `⚠ A chave deveria começar com "${prefixo}". Confira se copiou certo.`;

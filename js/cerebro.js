@@ -10,9 +10,10 @@ const MAX_MENSAGENS_HISTORICO = 20;   // quantas mensagens antigas o robô lembr
 
 /** Erro com um código simples, para o main.js saber o que mostrar */
 class ErroRobo extends Error {
-  constructor(codigo, mensagem) {
+  constructor(codigo, mensagem, detalhe = '') {
     super(mensagem);
     this.codigo = codigo;
+    this.detalhe = detalhe;   // o que a IA respondeu de verdade (para descobrir problemas)
   }
 }
 
@@ -218,26 +219,27 @@ async function lancarErroDaApi(resposta, provedor) {
     detalhe = erro?.error?.message || '';
   } catch (_) { /* sem detalhe */ }
   console.warn('Erro da API', provedor, resposta.status, detalhe);
+  const info = `erro ${resposta.status}${detalhe ? ': ' + detalhe : ''}`;
 
   const s = resposta.status;
   if (s === 401 || s === 403) {
-    throw new ErroRobo('chave-invalida', 'A chave não funcionou. Confira se copiou ela inteira.');
+    throw new ErroRobo('chave-invalida', 'A chave não funcionou. Confira se copiou ela inteira.', info);
   }
   if (/model/i.test(detalhe) && (s === 400 || s === 404)) {
-    throw new ErroRobo('modelo', 'Esse modelo não está disponível. Escolha outro na engrenagem.');
+    throw new ErroRobo('modelo', 'Esse modelo não está disponível. Escolha outro na engrenagem.', info);
   }
   if (s === 400 && /credit|balance/i.test(detalhe)) {
-    throw new ErroRobo('sem-credito', 'Acabaram os créditos. Coloque mais no console da Anthropic.');
+    throw new ErroRobo('sem-credito', 'Acabaram os créditos. Coloque mais no console da Anthropic.', info);
   }
   if (s === 429) {
     throw new ErroRobo('limite', provedor === 'groq'
       ? 'Chegamos no limite grátis por agora. Espere um pouquinho e tente de novo.'
-      : 'Muitas mensagens seguidas. Espere um pouquinho e tente de novo.');
+      : 'Muitas mensagens seguidas. Espere um pouquinho e tente de novo.', info);
   }
   if (s >= 500) {
-    throw new ErroRobo('ocupado', 'A IA está ocupada agora. Tente de novo daqui a pouco.');
+    throw new ErroRobo('ocupado', 'A IA está ocupada agora. Tente de novo daqui a pouco.', info);
   }
-  throw new ErroRobo('desconhecido', `Deu um erro (${s}). Tente de novo.`);
+  throw new ErroRobo('desconhecido', `Deu um erro (${s}). Tente de novo.`, info);
 }
 
 /** Separa "[feliz] Oi!" em { emocao: 'feliz', texto: 'Oi!' } */
@@ -253,4 +255,24 @@ function interpretarResposta(bruto) {
   // Limpa sobras de formatação, caso apareçam
   texto = texto.replace(/[*_#`]/g, '').trim();
   return { emocao, texto };
+}
+
+/** Testa a chave do Claude com uma mensagem bem curtinha (custa quase nada) */
+async function testarChaveClaude(chave, modelo) {
+  const resposta = await buscar(URL_API_CLAUDE, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': chave,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: modelo || MODELOS_CLAUDE[0].id,
+      max_tokens: 5,
+      messages: [{ role: 'user', content: 'oi' }],
+    }),
+  });
+  if (!resposta.ok) await lancarErroDaApi(resposta, 'claude');
+  return true;
 }
