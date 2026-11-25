@@ -33,6 +33,9 @@ const CONFIG_PADRAO = {
   provedor: 'groq',
   chaves: { groq: '', claude: '' },
   modelos: { groq: MODELOS_GROQ_PREFERIDOS[0], claude: MODELOS_CLAUDE[0].id },
+  falarRespostas: true,    // o robô lê as respostas em voz alta
+  modoConversa: false,     // depois de falar, já volta a ouvir sozinho
+  camera: 'user',          // 'user' = câmera da frente | 'environment' = de trás
 };
 
 function carregarConfig() {

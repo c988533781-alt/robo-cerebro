@@ -3,7 +3,8 @@
  *
  * Etapa 1: olhos ✅
  * Etapa 2: conversa por texto com a IA (Groq grátis ou Claude) ✅
- * Próximas: voz, memória e Bluetooth (ESP32).
+ * Etapa 3: voz (ouvir e falar) e câmera ✅
+ * Próximas: memória e Bluetooth (ESP32).
  */
 
 // ---------------------------------------------------------------------------
@@ -16,6 +17,9 @@ const dica = document.getElementById('dica');
 const barra = document.getElementById('barra');
 const campoMensagem = document.getElementById('mensagem');
 const botaoEnviar = document.getElementById('enviar');
+const botaoMic = document.getElementById('microfone');
+const botaoCamera = document.getElementById('botaoCamera');
+const previa = document.getElementById('previa');
 
 const painel = document.getElementById('painel');
 const cfgNome = document.getElementById('cfgNome');
@@ -24,6 +28,9 @@ const cfgModelo = document.getElementById('cfgModelo');
 const cfgProvedor = document.getElementById('cfgProvedor');
 const cfgDicaChave = document.getElementById('cfgDicaChave');
 const cfgStatus = document.getElementById('cfgStatus');
+const cfgFalar = document.getElementById('cfgFalar');
+const cfgModoConversa = document.getElementById('cfgModoConversa');
+const cfgCamera = document.getElementById('cfgCamera');
 
 // ---------------------------------------------------------------------------
 // Olhos e cérebro
@@ -32,6 +39,9 @@ const olhos = new Olhos(canvas, { cor: '#5ff3ff' });
 
 let config = carregarConfig();
 const cerebro = new Cerebro(() => config);
+const ouvido = new Ouvido();
+const voz = new Voz();
+const camera = new Camera(previa);
 
 const ordem = Object.keys(EMOCOES);
 
@@ -73,11 +83,25 @@ function mostrarFala(texto, ehErro = false) {
 }
 
 // ---------------------------------------------------------------------------
-// Conversa com o Claude
+// Conversa com a IA
 // ---------------------------------------------------------------------------
 let ocupado = false;
 
-async function enviarMensagem(texto) {
+// Frases que fazem o robô usar a câmera mesmo se ela estiver desligada
+const PEDIU_PARA_VER = /(?<!\p{L})(v[eê]|vendo|enxerga\p{L}*|olha (isso|aqui|s[oó]|pra)|olhe|veja|repara|c[aâ]mera|foto|aparecendo|na minha m[aã]o|segurando)(?!\p{L})/iu;
+
+function atualizarBotoes() {
+  botaoEnviar.disabled = ocupado;
+  botaoMic.classList.toggle('ativo', ouvido.ativo);
+  botaoCamera.classList.toggle('ativo', camera.ligada);
+  previa.hidden = !camera.ligada;
+}
+
+/**
+ * Manda uma mensagem para a IA.
+ * veioDaVoz = true quando a mensagem foi falada (aí, no modo conversa, ele volta a ouvir)
+ */
+async function enviarMensagem(texto, { veioDaVoz = false } = {}) {
   texto = texto.trim();
   if (!texto || ocupado) return;
 
@@ -88,32 +112,124 @@ async function enviarMensagem(texto) {
   }
 
   ocupado = true;
-  botaoEnviar.disabled = true;
+  atualizarBotoes();
   clearTimeout(timerVoltarNeutro);
+  voz.calar();
 
   // Enquanto espera a resposta: cara de quem está pensando
   mudarEmocao('pensando', false);
   mostrarFala('...');
 
+  let resposta = null;
   try {
-    const { emocao, texto: resposta } = await cerebro.conversar(texto);
+    // Se pediu para ver e a câmera está desligada, liga agora
+    if (!camera.ligada && PEDIU_PARA_VER.test(texto)) {
+      await ligarCamera();
+    }
+    const foto = camera.ligada ? camera.foto() : null;
+
+    const r = await cerebro.conversar(texto, foto);
+    resposta = r.texto;
     olhos.olharLivremente();
-    mudarEmocao(emocao, false);
+    mudarEmocao(r.emocao, false);
     mostrarFala(resposta);
-    voltarAoNeutroDepois(8 + resposta.length * 0.05);
   } catch (erro) {
     console.warn(erro);
     mudarEmocao('triste', false);
     mostrarFala(erro.message || 'Deu algum problema.', true);
     voltarAoNeutroDepois(5);
-    if (erro.codigo === 'sem-chave' || erro.codigo === 'chave-invalida' || erro.codigo === 'modelo') {
-      abrirPainel();
-    }
+    if (['sem-chave', 'chave-invalida', 'modelo'].includes(erro.codigo)) abrirPainel();
   } finally {
     ocupado = false;
-    botaoEnviar.disabled = false;
+    atualizarBotoes();
+  }
+
+  if (!resposta) return;
+
+  // Fala a resposta em voz alta, com os olhos "pulando" no ritmo
+  if (config.falarRespostas && voz.suportado) {
+    await voz.falar(resposta, {
+      aoComecar: () => olhos.setFalando(true),
+      aoTerminar: () => olhos.setFalando(false),
+    });
+  }
+  voltarAoNeutroDepois(6);
+
+  // Modo conversa: se você falou com ele, ele já volta a ouvir
+  const despediu = /(?<!\p{L})(tchau|at[eé] (logo|mais|amanh[aã])|boa noite|pode parar|chega)(?!\p{L})/iu.test(texto);
+  if (config.modoConversa && veioDaVoz && !despediu && !ocupado) {
+    setTimeout(() => comecarAOuvir(), 300);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Ouvir (microfone)
+// ---------------------------------------------------------------------------
+async function comecarAOuvir() {
+  // Tocar de novo enquanto ele ouve = "terminei de falar"
+  if (ouvido.ativo) { ouvido.parar(); return; }
+  if (ocupado) return;
+  if (!ouvido.suportado) {
+    mostrarFala('Este navegador não consegue ouvir. Use o Chrome no celular.', true);
+    return;
+  }
+
+  voz.calar();
+  olhos.setFalando(false);
+  clearTimeout(timerVoltarNeutro);
+  mudarEmocao('ouvindo', false);
+  mostrarFala('Estou ouvindo...');
+
+  let texto = '';
+  const promessa = ouvido.ouvir({ aoParcial: (t) => { if (t) mostrarFala(t); } });
+  atualizarBotoes();
+  try {
+    texto = await promessa;
+  } catch (erro) {
+    mudarEmocao('triste', false);
+    mostrarFala(erro.message, true);
+    voltarAoNeutroDepois(4);
+    return;
+  } finally {
+    atualizarBotoes();
+  }
+
+  if (texto) {
+    enviarMensagem(texto, { veioDaVoz: true });
+  } else {
+    mudarEmocao('neutro', false);
+    mostrarFala('Não ouvi nada. Toque no 🎤 e fale comigo.');
+  }
+}
+
+botaoMic.addEventListener('click', comecarAOuvir);
+
+// ---------------------------------------------------------------------------
+// Câmera
+// ---------------------------------------------------------------------------
+async function ligarCamera() {
+  await camera.ligar(config.camera);
+  atualizarBotoes();
+}
+
+botaoCamera.addEventListener('click', async () => {
+  if (camera.ligada) {
+    camera.desligar();
+    atualizarBotoes();
+    mostrarFala('Câmera desligada.');
+    return;
+  }
+  try {
+    await ligarCamera();
+    mudarEmocao('surpreso', false);
+    mostrarFala('Agora eu consigo ver! Me pergunte o que estou vendo.');
+    voltarAoNeutroDepois(3);
+  } catch (erro) {
+    mudarEmocao('triste', false);
+    mostrarFala(erro.message, true);
+    voltarAoNeutroDepois(4);
+  }
+});
 
 barra.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -206,6 +322,9 @@ function abrirPainel() {
   rascunho = structuredClone(config);
   cfgNome.value = config.nome;
   cfgProvedor.value = config.provedor;
+  cfgFalar.checked = config.falarRespostas;
+  cfgModoConversa.checked = config.modoConversa;
+  cfgCamera.value = config.camera;
   mostrarProvedor();
   painel.hidden = false;
 }
@@ -241,10 +360,16 @@ document.getElementById('cfgSalvar').addEventListener('click', () => {
   guardarCamposNoRascunho();
   rascunho.nome = cfgNome.value.trim() || CONFIG_PADRAO.nome;
   rascunho.provedor = id;
+  rascunho.falarRespostas = cfgFalar.checked;
+  rascunho.modoConversa = cfgModoConversa.checked;
+  const trocouCamera = rascunho.camera !== cfgCamera.value;
+  rascunho.camera = cfgCamera.value;
   const trocouProvedor = config.provedor !== id;
   config = rascunho;
   if (salvarConfig(config)) {
     if (trocouProvedor) cerebro.limpar();
+    if (!config.falarRespostas) voz.calar();
+    if (trocouCamera && camera.ligada) ligarCamera().catch(() => {});
     fecharPainel();
     mudarEmocao('feliz', false);
     mostrarFala(chave ? `Pronto! Agora eu sou ${config.nome}. Fala comigo!` : 'Configurações salvas.');
@@ -345,6 +470,8 @@ window.robo = {
   olharLivre: () => olhos.olharLivremente(),
   piscar: () => olhos.piscar(),
   falar: (texto) => enviarMensagem(texto),
+  ouvir: () => comecarAOuvir(),
+  dizer: (texto) => voz.falar(texto, { aoComecar: () => olhos.setFalando(true), aoTerminar: () => olhos.setFalando(false) }),
   emocoes: ordem,
 };
 

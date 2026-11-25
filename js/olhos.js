@@ -71,6 +71,10 @@ class Olhos {
     // "Respiração": o olho pulsa bem de leve, para parecer vivo
     this.tempo = 0;
 
+    // Falando: os olhos "pulam" de leve no ritmo da fala
+    this.falando = false;
+    this._fala = 0;
+
     this._redimensionar = this._redimensionar.bind(this);
     window.addEventListener('resize', this._redimensionar);
     // Também redimensiona quando só a área do canvas muda (ex.: teclado do celular abrindo)
@@ -108,6 +112,11 @@ class Olhos {
   olharLivremente() {
     this.alvo.olharX = null;
     this.alvo.olharY = null;
+  }
+
+  /** Liga/desliga o balanço dos olhos enquanto o robô fala */
+  setFalando(ligado) {
+    this.falando = !!ligado;
   }
 
   /** Pisca uma vez agora */
@@ -217,6 +226,10 @@ class Olhos {
     // Pulsar bem de leve ("respirando")
     const respira = 1 + Math.sin(this.tempo * 1.6) * 0.012;
 
+    // Balanço da fala (suave para começar e parar)
+    const alvoFala = this.falando ? Math.abs(Math.sin(this.tempo * 9)) * 0.08 : 0;
+    this._fala += (alvoFala - this._fala) * 0.35;
+
     // Deslocamento do olhar
     const dx = a.olharX * u * 0.45;
     const dy = a.olharY * u * 0.3;
@@ -231,7 +244,7 @@ class Olhos {
 
       const w = larguraBase * a.escalaL * respira * perspectiva;
       // Piscar achata o olho na altura
-      const hCheio = alturaBase * a.escalaA * respira * perspectiva;
+      const hCheio = alturaBase * a.escalaA * respira * perspectiva * (1 + this._fala);
       const h = Math.max(hCheio * (1 - this.piscada * 0.92), 2);
 
       const cx = W / 2 + lado * distancia + dx;

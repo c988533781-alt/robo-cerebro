@@ -23,13 +23,18 @@
     <!-- Dica que some depois do primeiro toque -->
     <div id="dica">Toque na tela para começar</div>
 
+    <!-- Miniatura da câmera (só aparece quando ela está ligada) -->
+    <video id="previa" playsinline muted hidden></video>
+
     <!-- Botão de configurações -->
     <button id="engrenagem" type="button" aria-label="Configurações">⚙</button>
   </main>
 
   <!-- Barra para digitar -->
   <form id="barra" autocomplete="off">
-    <input id="mensagem" type="text" placeholder="Fale com o robô..." enterkeyhint="send" maxlength="500">
+    <button id="microfone" type="button" class="redondo" aria-label="Falar com o robô">🎤</button>
+    <input id="mensagem" type="text" placeholder="Toque no 🎤 ou digite..." enterkeyhint="send" maxlength="500">
+    <button id="botaoCamera" type="button" class="redondo" aria-label="Ligar a câmera">📷</button>
     <button id="enviar" type="submit">Enviar</button>
   </form>
 
@@ -56,6 +61,16 @@
         <select id="cfgModelo"></select>
       </label>
 
+      <label class="marcar"><input id="cfgFalar" type="checkbox"> Falar as respostas em voz alta</label>
+      <label class="marcar"><input id="cfgModoConversa" type="checkbox"> Modo conversa (depois de falar, ele já volta a ouvir)</label>
+
+      <label>Câmera
+        <select id="cfgCamera">
+          <option value="user">Da frente (vê quem está olhando para ele)</option>
+          <option value="environment">De trás</option>
+        </select>
+      </label>
+
       <div class="botoes">
         <button id="cfgSalvar" type="button" class="principal">Salvar</button>
         <button id="cfgFechar" type="button">Fechar</button>
@@ -72,6 +87,8 @@
   <script src="js/olhos.js"></script>
   <script src="js/config.js"></script>
   <script src="js/cerebro.js"></script>
+  <script src="js/voz.js"></script>
+  <script src="js/camera.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

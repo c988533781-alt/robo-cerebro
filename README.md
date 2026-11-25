@@ -2,7 +2,7 @@
 
 Cérebro do robô rodando no celular (moto g05), com a IA pela nuvem (Groq grátis ou Claude) e um ESP32 como corpo.
 
-**Etapa atual: 2 — Conversa com a IA (Groq grátis ou Claude) ✅**
+**Etapa atual: 3 — Voz e câmera ✅**
 
 ## Arquivos
 
@@ -12,7 +12,9 @@ robo-cerebro/
 ├── css/style.css   → visual (fundo preto, tela cheia)
 ├── js/olhos.js     → desenho e animação dos olhos + lista de emoções
 ├── js/config.js    → guarda nome, chaves e modelos SÓ no aparelho
-├── js/cerebro.js   → conversa com a IA (Groq ou Claude)
+├── js/cerebro.js   → conversa com a IA (Groq ou Claude), com foto quando a câmera está ligada
+├── js/voz.js       → ouvir (microfone) e falar (voz do celular)
+├── js/camera.js    → câmera do celular e foto para a IA
 ├── js/main.js      → programa principal (conversa, toques, tela cheia, configurações)
 └── README.md       → este arquivo
 ```
@@ -25,7 +27,19 @@ robo-cerebro/
 - **Toque nos olhos**: "carinho", ele fica feliz por um instante
 - **Conversa**: digite na barra de baixo; a IA responde e os olhos mostram a emoção da resposta
 - Enquanto você digita ele fica **ouvindo**; enquanto espera a resposta fica **pensando**
-- **Engrenagem ⚙**: nome do robô, quem pensa (Groq ou Claude), chave, modelo, conversa nova, apagar chave
+- **🎤 Microfone**: toque e fale. Ele mostra o que entendeu, responde e **fala a resposta em voz alta** (os olhos "pulam" enquanto ele fala). Tocar de novo enquanto ele ouve = "terminei de falar".
+- **📷 Câmera**: liga a câmera da frente. Aparece uma miniatura no canto. Com ela ligada, cada mensagem leva uma foto e a IA comenta o que vê.
+  Se você perguntar "o que você está vendo?" com a câmera desligada, ele liga sozinho.
+- **Modo conversa** (na engrenagem): depois de responder, ele já volta a ouvir. Diga "tchau" para parar.
+- **Engrenagem ⚙**: nome do robô, quem pensa (Groq ou Claude), chave, modelo, falar em voz alta, modo conversa, câmera da frente/de trás, conversa nova, apagar chave
+
+### Permissões no celular
+Na primeira vez, o Chrome pergunta se o site pode usar o **microfone** e a **câmera** → toque em **Permitir**.
+Se negou sem querer: toque no **cadeado** ao lado do endereço → **Permissões** → libere microfone e câmera.
+
+### Privacidade
+- A voz é transformada em texto pelo Chrome (serviço do Google).
+- A foto só é tirada quando a câmera está ligada (miniatura no canto) ou quando você pede para ele ver. Ela vai para a IA escolhida (Groq ou Claude) e **não fica guardada** no histórico do robô.
 
 ## Chave da IA
 
@@ -85,6 +99,8 @@ robo.olhar(1, 0)       // olha para a direita (x e y de -1 a 1)
 robo.olharLivre()      // volta a olhar em volta sozinho
 robo.piscar()          // pisca
 robo.falar('Oi!')      // manda uma mensagem para a IA
+robo.ouvir()           // liga o microfone
+robo.dizer('Olá')      // fala em voz alta, sem perguntar à IA
 ```
 
 ## Criar uma emoção nova
@@ -96,7 +112,7 @@ Depois coloque o nome bonito em `NOMES_EMOCOES`.
 
 - [x] 1. Olhos animados
 - [x] 2. Conversa por texto com a IA (Groq ou Claude)
-- [ ] 3. Voz: ouvir e falar
+- [x] 3. Voz (ouvir e falar) e câmera
 - [ ] 4. Memória do robô
 - [ ] 5. ESP32 + Bluetooth (olhos reagem ao sensor)
 - [ ] 6. Mecânica

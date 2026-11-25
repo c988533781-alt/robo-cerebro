@@ -212,3 +212,53 @@ body {
   border-color: #ff8080aa;
   color: #ffb3b3;
 }
+
+/* ---------- Microfone e câmera ---------- */
+#barra .redondo {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #5ff3ff55;
+  background: #000;
+  font-size: 20px;
+  line-height: 44px;
+}
+#barra .redondo.ativo {
+  background: #5ff3ff;
+  border-color: #5ff3ff;
+  box-shadow: 0 0 12px #5ff3ff;
+}
+#microfone.ativo { animation: pulsar 1s ease-in-out infinite; }
+@keyframes pulsar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+#previa {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid #5ff3ff88;
+  background: #000;
+}
+#previa[hidden] { display: none; }
+#previa.espelhado { transform: scaleX(-1); }
+
+#painel label.marcar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#painel label.marcar input {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+}

@@ -43,11 +43,16 @@ class Cerebro {
       `- SEMPRE comece a resposta com a sua emoção entre colchetes, escolhendo uma desta lista: ${emocoes.map((e) => `[${e}]`).join(', ')}.`,
       '- Exemplo: [feliz] Oi! Que bom falar com você de novo.',
       '- Se uma criança estiver falando com você, use palavras simples e seja paciente.',
+      '- Às vezes a mensagem vem com uma foto da sua câmera: é o que você está vendo agora.',
+      '  Comente o que vê de forma curta e natural, e nunca invente o que não aparece na foto.',
     ].join('\n');
   }
 
-  /** Manda um texto para a IA. Devolve { emocao, texto }. */
-  async conversar(textoUsuario) {
+  /**
+   * Manda um texto para a IA, com uma foto da câmera se tiver.
+   * Devolve { emocao, texto }.
+   */
+  async conversar(textoUsuario, foto = null) {
     const cfg = this.obterConfig();
     const provedor = cfg.provedor;
     const chave = cfg.chaves[provedor];
@@ -60,8 +65,8 @@ class Cerebro {
     let bruto;
     try {
       bruto = provedor === 'claude'
-        ? await this._perguntarClaude(cfg, chave)
-        : await this._perguntarGroq(cfg, chave);
+        ? await this._perguntarClaude(cfg, chave, foto)
+        : await this._perguntarGroq(cfg, chave, foto);
     } catch (erro) {
       this.historico.pop();   // a pergunta que falhou não fica no histórico
       throw erro;
@@ -72,13 +77,27 @@ class Cerebro {
       throw new ErroRobo('vazio', 'A IA não respondeu nada. Tente de novo.');
     }
 
+    // A foto não fica guardada no histórico (gastaria muito); fica só um aviso
+    if (foto) this.historico[this.historico.length - 1].content += ' (mandei uma foto da câmera)';
     this.historico.push({ role: 'assistant', content: bruto });
     this._cortarHistorico();
     return interpretarResposta(bruto);
   }
 
   // ---------------- Groq (grátis) ----------------
-  async _perguntarGroq(cfg, chave) {
+  async _perguntarGroq(cfg, chave, foto) {
+    const mensagens = this.historico.map((m) => ({ role: m.role, content: m.content }));
+    if (foto) {
+      const ultima = mensagens[mensagens.length - 1];
+      ultima.content = [
+        { type: 'text', text: ultima.content },
+        { type: 'image_url', image_url: { url: foto } },
+      ];
+    }
+    const modelo = foto
+      ? await this._modeloVisaoGroq(cfg, chave)
+      : (cfg.modelos.groq || MODELOS_GROQ_PREFERIDOS[0]);
+
     const resposta = await buscar(URL_API_GROQ, {
       method: 'POST',
       headers: {
@@ -86,12 +105,12 @@ class Cerebro {
         authorization: `Bearer ${chave}`,
       },
       body: JSON.stringify({
-        model: cfg.modelos.groq || MODELOS_GROQ_PREFERIDOS[0],
+        model: modelo,
         max_tokens: 800,
         temperature: 0.8,
         messages: [
           { role: 'system', content: this._instrucoes(cfg.nome) },
-          ...this.historico,
+          ...mensagens,
         ],
       }),
     });
@@ -100,8 +119,32 @@ class Cerebro {
     return (dados.choices?.[0]?.message?.content || '').trim();
   }
 
+  /** Nem todo modelo do Groq enxerga imagens; escolhe um que enxergue */
+  async _modeloVisaoGroq(cfg, chave) {
+    const ehVisao = (id) => /llama-4|scout|maverick|vision|-vl/i.test(id || '');
+    if (ehVisao(cfg.modelos.groq)) return cfg.modelos.groq;
+    if (cfg.modelos.groqVisao) return cfg.modelos.groqVisao;
+    const ids = await listarModelosGroq(chave);
+    const escolhido = ids.find(ehVisao);
+    if (!escolhido) {
+      throw new ErroRobo('sem-visao', 'O Groq não tem um modelo que enxerga agora. Desligue a câmera ou use o Claude.');
+    }
+    cfg.modelos.groqVisao = escolhido;
+    salvarConfig(cfg);
+    return escolhido;
+  }
+
   // ---------------- Claude (pago) ----------------
-  async _perguntarClaude(cfg, chave) {
+  async _perguntarClaude(cfg, chave, foto) {
+    const mensagens = this.historico.map((m) => ({ role: m.role, content: m.content }));
+    if (foto) {
+      const ultima = mensagens[mensagens.length - 1];
+      ultima.content = [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: foto.split(',')[1] } },
+        { type: 'text', text: ultima.content },
+      ];
+    }
+
     const resposta = await buscar(URL_API_CLAUDE, {
       method: 'POST',
       headers: {
@@ -115,7 +158,7 @@ class Cerebro {
         model: cfg.modelos.claude || MODELOS_CLAUDE[0].id,
         max_tokens: 400,
         system: this._instrucoes(cfg.nome),
-        messages: this.historico,
+        messages: mensagens,
       }),
     });
     if (!resposta.ok) await lancarErroDaApi(resposta, 'claude');
