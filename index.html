@@ -9,17 +9,6 @@
   <title>Robô — Cérebro</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
-  <script>
-document.addEventListener('click', () => {
-  const tela = document.documentElement;
-  if (!document.fullscreenElement && tela.requestFullscreen) {
-    tela.requestFullscreen().catch(() => {});
-  }
-  if ('wakeLock' in navigator) {
-    navigator.wakeLock.request('screen').catch(() => {});
-  }
-});
-</script>
 <body>
   <!-- Aqui os olhos são desenhados -->
   <canvas id="rosto"></canvas>
